@@ -113,7 +113,7 @@
 #define ONBOARD_LED_OUTPUT_PIN 13 // The pin for the onboard led, pretty straight forward
 
 #define LEARN_COUNT 1000 // How many cycles we spend learning acceptable motion levels
-#define SAFETY_FACTOR 1.70 //How much buffer to give our motion thresholds
+#define SAFETY_FACTOR 1.695 //How much buffer to give our motion thresholds
 
 enum states {
   JUST_STARTED,
@@ -196,7 +196,7 @@ void setup(void) {
 
 
   DebugPrintln("Initialization done");
-  delay(100);
+  delay(2000);
 }
 
 
@@ -208,7 +208,11 @@ void loop() {
   switch(systemState.state) {
     case JUST_STARTED:
       DebugPrintSimple("JUST_STARTED\n");
-      systemState.state = LEARNING;
+      systemState.state = NOT_ARMED;
+      flashCarLights(200);
+      delay(200);
+      flashCarLights(200);
+      delay(200);
       break;
     case LEARNING:
       DebugPrintSimple("LEARNING ");
@@ -390,7 +394,7 @@ void normalizeValues() {
   DebugPrintSimple(systemState.maxZ);
   DebugPrintSimple("\tm/s^2\n\n\n");
 
-  systemState.state = NOT_ARMED;
+  systemState.state = ARMED;
 
 }
 
@@ -461,7 +465,7 @@ void readRemoteControl() {
       flashCarLights(1000);
     } else {
       DebugPrintln("Remote is now LOW");
-      systemState.state = ARMED;
+      systemState.state = LEARNING;
       digitalWrite(ONBOARD_LED_OUTPUT_PIN, HIGH);
       flashCarLights(1000);
     }
