@@ -273,6 +273,8 @@ void loop() {
         DebugPrintSimple("FIRST_TRIGGER\n");
         systemState.state = FIRST_TRIGGER;
         delay(1000);
+        // Read it again to clear any readings from the last second
+        isMotionDetected();
       }
       readRemoteControl();
       break;
@@ -567,3 +569,6 @@ void printGyroAccelDebugInfo() {
 //  DebugPrintSimple(g.gyro.z);
   DebugPrintSimple("\n");
 }
+
+
+ 
