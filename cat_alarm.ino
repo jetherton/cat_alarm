@@ -113,7 +113,7 @@
 #define ONBOARD_LED_OUTPUT_PIN 13 // The pin for the onboard led, pretty straight forward
 
 #define LEARN_COUNT 1000 // How many cycles we spend learning acceptable motion levels
-#define SAFETY_FACTOR 1.695 //How much buffer to give our motion thresholds
+#define SAFETY_FACTOR 1.697 //How much buffer to give our motion thresholds
 
 #define INITIAL_REMOTE_CONTROL_READ_STATE -255
 
