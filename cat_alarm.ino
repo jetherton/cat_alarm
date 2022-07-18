@@ -115,6 +115,8 @@
 #define LEARN_COUNT 1000 // How many cycles we spend learning acceptable motion levels
 #define SAFETY_FACTOR 1.695 //How much buffer to give our motion thresholds
 
+#define INITIAL_REMOTE_CONTROL_READ_STATE -255
+
 enum states {
   JUST_STARTED,
   LEARNING,
@@ -128,7 +130,7 @@ enum states {
 struct SystemState {
   unsigned long timeOfLastEvent = 0;
   enum states state = JUST_STARTED;   
-  int remoteControlInput = -255;
+  int remoteControlInput = INITIAL_REMOTE_CONTROL_READ_STATE;
   int learnCount = LEARN_COUNT;
 
   float maxX = -10000000.0;
@@ -205,7 +207,7 @@ void setup(void) {
 void resetSystemState() {
   systemState.timeOfLastEvent = 0;
   systemState.state = JUST_STARTED;   
-  systemState.remoteControlInput = -255;
+  systemState.remoteControlInput = INITIAL_REMOTE_CONTROL_READ_STATE;
   systemState.learnCount = LEARN_COUNT;
   
   systemState.maxX = -10000000.0;
@@ -236,8 +238,13 @@ void loop() {
       systemState.state = NOT_ARMED;
       flashCarLights(200);
       delay(200);
-      flashCarLights(200);
+      flashCarLights(400);
+      delay(300);
+      flashCarLights(800);
+      delay(300);
+      flashCarLights(400);
       delay(200);
+      flashCarLights(200);
       break;
     case LEARNING:
       DebugPrintSimple("LEARNING ");
@@ -480,6 +487,13 @@ void learnNormalValues() {
 void readRemoteControl() {
   int sensorValue = digitalRead(REMOTE_CONTROL_INPUT_PIN);
 
+  // System just turned on state
+  if (INITIAL_REMOTE_CONTROL_READ_STATE == systemState.remoteControlInput) {
+        systemState.remoteControlInput = sensorValue;
+        systemState.state = NOT_ARMED;
+        return;
+  }
+
   if (sensorValue != systemState.remoteControlInput) {
     systemState.remoteControlInput = sensorValue;
     if (sensorValue == HIGH) {
@@ -492,6 +506,8 @@ void readRemoteControl() {
     } else {
       DebugPrintln("Remote is now LOW");
       resetSystemState();
+      // Do this to make sure the reset doesn't affect the armed state
+      systemState.remoteControlInput = sensorValue;
       systemState.state = LEARNING;
       digitalWrite(ONBOARD_LED_OUTPUT_PIN, HIGH);
       flashCarLights(1000);
@@ -551,6 +567,3 @@ void printGyroAccelDebugInfo() {
 //  DebugPrintSimple(g.gyro.z);
   DebugPrintSimple("\n");
 }
-
-
- 
