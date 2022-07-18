@@ -156,7 +156,7 @@ struct SystemState systemState;
 
 void setup(void) {
   
-  
+  resetSystemState();
   if (SERIAL_DEBUG_ENABLED) {
     Serial.begin(115200);
     while (!Serial) {
@@ -199,6 +199,31 @@ void setup(void) {
   delay(2000);
 }
 
+/**
+ * Set everything back to the way it was
+ */
+void resetSystemState() {
+  systemState.timeOfLastEvent = 0;
+  systemState.state = JUST_STARTED;   
+  systemState.remoteControlInput = -255;
+  systemState.learnCount = LEARN_COUNT;
+  
+  systemState.maxX = -10000000.0;
+  systemState.minX = 10000000.0;
+  systemState.sumX = 0;
+  
+  systemState.maxY = -10000000.0;
+  systemState.minY = 10000000.0;
+  systemState.sumY = 0;
+  
+  systemState.maxZ = -10000000.0;
+  systemState.minZ = 10000000.0;
+  systemState.sumZ = 0;
+  
+  systemState.avgX = 0;
+  systemState.avgY = 0;
+  systemState.avgZ = 0;
+}
 
 /**
  * The main loop that handles everything.
@@ -240,6 +265,7 @@ void loop() {
         flashCarLightsAndHorn(400);
         DebugPrintSimple("FIRST_TRIGGER\n");
         systemState.state = FIRST_TRIGGER;
+        delay(1000);
       }
       readRemoteControl();
       break;
@@ -465,6 +491,7 @@ void readRemoteControl() {
       flashCarLights(1000);
     } else {
       DebugPrintln("Remote is now LOW");
+      resetSystemState();
       systemState.state = LEARNING;
       digitalWrite(ONBOARD_LED_OUTPUT_PIN, HIGH);
       flashCarLights(1000);
