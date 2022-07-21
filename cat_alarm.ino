@@ -113,7 +113,7 @@
 #define ONBOARD_LED_OUTPUT_PIN 13 // The pin for the onboard led, pretty straight forward
 
 #define LEARN_COUNT 1000 // How many cycles we spend learning acceptable motion levels
-#define SAFETY_FACTOR 1.7 //How much buffer to give our motion thresholds
+#define SAFETY_FACTOR 1.71 //How much buffer to give our motion thresholds
 
 #define INITIAL_REMOTE_CONTROL_READ_STATE -255
 
@@ -205,6 +205,7 @@ void setup(void) {
  * Set everything back to the way it was
  */
 void resetSystemState() {
+  DebugPrintSimple("Reset system state\n");
   systemState.timeOfLastEvent = 0;
   systemState.state = JUST_STARTED;   
   systemState.remoteControlInput = INITIAL_REMOTE_CONTROL_READ_STATE;
@@ -225,6 +226,31 @@ void resetSystemState() {
   systemState.avgX = 0;
   systemState.avgY = 0;
   systemState.avgZ = 0;
+
+
+  DebugPrintSimple("MinX: ");
+  DebugPrintSimple(systemState.minX);
+  DebugPrintSimple("\tavgX: ");
+  DebugPrintSimple(systemState.avgX);
+  DebugPrintSimple("\tMaxX: ");
+  DebugPrintSimple(systemState.maxX);
+  DebugPrintSimple("\tm/s^2\n");
+  
+  DebugPrintSimple("MinY: ");
+  DebugPrintSimple(systemState.minY);
+  DebugPrintSimple("\tavgY: ");
+  DebugPrintSimple(systemState.avgY);
+  DebugPrintSimple("\tMaxY: ");
+  DebugPrintSimple(systemState.maxY);
+  DebugPrintSimple("\tm/s^2\n");
+  
+  DebugPrintSimple("MinZ: ");
+  DebugPrintSimple(systemState.minZ);
+  DebugPrintSimple("\tavgZ: ");
+  DebugPrintSimple(systemState.avgZ);
+  DebugPrintSimple("\tMaxZ: ");
+  DebugPrintSimple(systemState.maxZ);
+  DebugPrintSimple("\tm/s^2\n\n\n");
 }
 
 /**
@@ -247,14 +273,17 @@ void loop() {
       flashCarLights(400);
       break;
     case LEARNING:
-      DebugPrintSimple("LEARNING ");
-      DebugPrintSimple(systemState.learnCount);
-      DebugPrintSimple("\n");
+      if(systemState.learnCount % 100 == 0) {
+        DebugPrintSimple("LEARNING ");
+        DebugPrintSimple(systemState.learnCount);
+        DebugPrintSimple("\n");
+      }
       learnNormalValues();
       break;
     case NORMALIZING:
-      DebugPrintSimple("JUST_STARTED\n");
+      DebugPrintSimple("NORMALIZING\n");
       normalizeValues();
+      DebugPrintSimple("NORMALIZED\n");
       // four flashes means the system is ready
       flashCarLights(200);
       delay(200);
@@ -274,6 +303,7 @@ void loop() {
         systemState.state = FIRST_TRIGGER;
         delay(1000);
         // Read it again to clear any readings from the last second
+        DebugPrintSimple("Throw away motion read after first trigger\n");
         isMotionDetected();
       }
       readRemoteControl();
@@ -288,13 +318,13 @@ void loop() {
         DebugPrintSimple("ALARMING\n");
         systemState.state = ALARMING;
       } else if(isTimeOfLastEventMoreThanSecondsAgo(60)) {
+        DebugPrintSimple("First trigger time out, going back to armed\n");
         systemState.state = ARMED;
       } else {
         readRemoteControl();
       }
       break;
     case ALARMING:
-      
       if(isTimeOfLastEventMoreThanSecondsAgo(300)) { 
         systemState.state = ARMED;
       } else {
@@ -302,12 +332,18 @@ void loop() {
         turnOnRemoteAlarm();
         delay(400);
       }
-      
       readRemoteControl();
       break;
   }
- 
-  delay(100);
+
+  if(systemState.state == NOT_ARMED) {
+    // We're not armed so wait longer for inputs
+    delay(1000);
+  } else {
+    // We need to actively look for motion
+    delay(100);
+  }
+  
 }
 
 void flashCarLights(int duration) {
@@ -346,6 +382,7 @@ boolean isTimeOfLastEventMoreThanSecondsAgo(unsigned long secondsAgo) {
   double deltaAsDouble = (double)now - (double)systemState.timeOfLastEvent;
   if( deltaAsDouble < 0) {
     // Roll over has happened.
+    DebugPrintln("Handling rollover\n");
     unsigned long timeToRollOver = MAX_U_LONG - systemState.timeOfLastEvent;
     delta = timeToRollOver + now;
   } else {
@@ -378,6 +415,14 @@ bool isMotionDetected() {
   if(a.acceleration.x > systemState.maxX || a.acceleration.x < systemState.minX ||
      a.acceleration.y > systemState.maxY || a.acceleration.y < systemState.minY ||
      a.acceleration.z > systemState.maxZ || a.acceleration.z < systemState.minZ ) {
+      
+    DebugPrintSimple("Motion Detected \ta.x: ");
+    DebugPrintSimple(a.acceleration.x);
+    DebugPrintSimple("\ta.y: ");
+    DebugPrintSimple(a.acceleration.y);
+    DebugPrintSimple("\ta.z: ");
+    DebugPrintSimple(a.acceleration.z);
+    DebugPrintSimple("\tm/s^2\n");
     return true;
   } else {
     return false;
@@ -441,7 +486,6 @@ void normalizeValues() {
 void learnNormalValues() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
-  bool didChange = false;
   if(systemState.learnCount > 0) {
     systemState.learnCount--;
 
@@ -451,29 +495,23 @@ void learnNormalValues() {
 
     if(a.acceleration.x > systemState.maxX) {
       systemState.maxX = a.acceleration.x;
-      didChange = true;
     }
     if(a.acceleration.x < systemState.minX) {
       systemState.minX = a.acceleration.x;
-      didChange = true;
     }
 
     if(a.acceleration.y > systemState.maxY) {
       systemState.maxY = a.acceleration.y;
-      didChange = true;
     }
     if(a.acceleration.y < systemState.minY) {
       systemState.minY = a.acceleration.y;
-      didChange = true;
     }
 
     if(a.acceleration.z > systemState.maxZ) {
       systemState.maxZ = a.acceleration.z;
-      didChange = true;
     }
     if(a.acceleration.z < systemState.minZ) {
       systemState.minZ = a.acceleration.z;
-      didChange = true;
     }  
   } else if (systemState.learnCount == 0) {
     // All done learning
@@ -492,6 +530,7 @@ void readRemoteControl() {
   // System just turned on state
   if (INITIAL_REMOTE_CONTROL_READ_STATE == systemState.remoteControlInput) {
         systemState.remoteControlInput = sensorValue;
+        DebugPrintln("Remote is now NOT_ARMED because we just started\n");
         systemState.state = NOT_ARMED;
         return;
   }
@@ -501,15 +540,17 @@ void readRemoteControl() {
     if (sensorValue == HIGH) {
       DebugPrintln("Remote is now HIGH");
       systemState.state = NOT_ARMED;
+      DebugPrintSimple("State is NOT_ARMED\n");
       digitalWrite(ONBOARD_LED_OUTPUT_PIN, LOW);
       flashCarLights(1000);
       delay(500);
       flashCarLights(1000);
     } else {
-      DebugPrintln("Remote is now LOW");
+      DebugPrintln("Remote is now LOW\n");
       resetSystemState();
       // Do this to make sure the reset doesn't affect the armed state
       systemState.remoteControlInput = sensorValue;
+      DebugPrintSimple("State is LEARNING\n");
       systemState.state = LEARNING;
       digitalWrite(ONBOARD_LED_OUTPUT_PIN, HIGH);
       flashCarLights(1000);
