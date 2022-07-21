@@ -113,7 +113,7 @@
 #define ONBOARD_LED_OUTPUT_PIN 13 // The pin for the onboard led, pretty straight forward
 
 #define LEARN_COUNT 1000 // How many cycles we spend learning acceptable motion levels
-#define SAFETY_FACTOR 1.697 //How much buffer to give our motion thresholds
+#define SAFETY_FACTOR 1.7 //How much buffer to give our motion thresholds
 
 #define INITIAL_REMOTE_CONTROL_READ_STATE -255
 
@@ -236,15 +236,15 @@ void loop() {
     case JUST_STARTED:
       DebugPrintSimple("JUST_STARTED\n");
       systemState.state = NOT_ARMED;
-      flashCarLights(200);
-      delay(200);
       flashCarLights(400);
-      delay(300);
-      flashCarLights(800);
-      delay(300);
+      delay(400);
       flashCarLights(400);
-      delay(200);
-      flashCarLights(200);
+      delay(400);
+      flashCarLights(400);
+      delay(400);
+      flashCarLights(400);
+      delay(400);
+      flashCarLights(400);
       break;
     case LEARNING:
       DebugPrintSimple("LEARNING ");
