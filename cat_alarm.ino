@@ -134,15 +134,21 @@ struct SystemState {
   int learnCount = LEARN_COUNT;
 
   float maxX = -10000000.0;
+  float runningMaxX = -10000000.0;
   float minX = 10000000.0;
+  float runningMinX = 10000000.0;
   double sumX = 0;
   
   float maxY = -10000000.0;
+  float runningMaxY = -10000000.0;
   float minY = 10000000.0;
+  float runningMinY = 10000000.0;
   double sumY = 0;
   
   float maxZ = -10000000.0;
+  float runningMaxZ = -10000000.0;
   float minZ = 10000000.0;
+  float runningMinZ = 10000000.0;
   double sumZ = 0;
   
   double avgX = 0;
@@ -158,7 +164,6 @@ struct SystemState systemState;
 
 void setup(void) {
   
-  resetSystemState();
   if (SERIAL_DEBUG_ENABLED) {
     Serial.begin(115200);
     while (!Serial) {
@@ -202,55 +207,30 @@ void setup(void) {
 }
 
 /**
- * Set everything back to the way it was
+ * Reset the state so we can start calibration over again.
+ * Because of changes in temperature we need to continually
+ * re-calibrate to keep the system accurate.
  */
-void resetSystemState() {
+void resetSystemStateToCalibrate() {
   DebugPrintSimple("Reset system state\n");
-  systemState.timeOfLastEvent = 0;
-  systemState.state = JUST_STARTED;   
-  systemState.remoteControlInput = INITIAL_REMOTE_CONTROL_READ_STATE;
+  
   systemState.learnCount = LEARN_COUNT;
   
-  systemState.maxX = -10000000.0;
-  systemState.minX = 10000000.0;
+  systemState.runningMaxX = -10000000.0;
+  systemState.runningMinX = 10000000.0;
   systemState.sumX = 0;
   
-  systemState.maxY = -10000000.0;
-  systemState.minY = 10000000.0;
+  systemState.runningMaxY = -10000000.0;
+  systemState.runningMinY = 10000000.0;
   systemState.sumY = 0;
   
-  systemState.maxZ = -10000000.0;
-  systemState.minZ = 10000000.0;
+  systemState.runningMaxZ = -10000000.0;
+  systemState.runningMinZ = 10000000.0;
   systemState.sumZ = 0;
   
   systemState.avgX = 0;
   systemState.avgY = 0;
   systemState.avgZ = 0;
-
-
-  DebugPrintSimple("MinX: ");
-  DebugPrintSimple(systemState.minX);
-  DebugPrintSimple("\tavgX: ");
-  DebugPrintSimple(systemState.avgX);
-  DebugPrintSimple("\tMaxX: ");
-  DebugPrintSimple(systemState.maxX);
-  DebugPrintSimple("\tm/s^2\n");
-  
-  DebugPrintSimple("MinY: ");
-  DebugPrintSimple(systemState.minY);
-  DebugPrintSimple("\tavgY: ");
-  DebugPrintSimple(systemState.avgY);
-  DebugPrintSimple("\tMaxY: ");
-  DebugPrintSimple(systemState.maxY);
-  DebugPrintSimple("\tm/s^2\n");
-  
-  DebugPrintSimple("MinZ: ");
-  DebugPrintSimple(systemState.minZ);
-  DebugPrintSimple("\tavgZ: ");
-  DebugPrintSimple(systemState.avgZ);
-  DebugPrintSimple("\tMaxZ: ");
-  DebugPrintSimple(systemState.maxZ);
-  DebugPrintSimple("\tm/s^2\n\n\n");
 }
 
 /**
@@ -262,6 +242,7 @@ void loop() {
     case JUST_STARTED:
       DebugPrintSimple("JUST_STARTED\n");
       systemState.state = NOT_ARMED;
+      DebugPrintSimple("NOT_ARMED\n");
       flashCarLights(400);
       delay(400);
       flashCarLights(400);
@@ -279,11 +260,15 @@ void loop() {
         DebugPrintSimple("\n");
       }
       learnNormalValues();
+      if(systemState.learnCount == 0) {
+        systemState.state = NORMALIZING;
+      }
       break;
     case NORMALIZING:
       DebugPrintSimple("NORMALIZING\n");
       normalizeValues();
       DebugPrintSimple("NORMALIZED\n");
+      resetSystemStateToCalibrate();
       // four flashes means the system is ready
       flashCarLights(200);
       delay(200);
@@ -293,9 +278,10 @@ void loop() {
       delay(200);
       flashCarLights(200);
       delay(2000);
+      DebugPrintSimple("ARMED\n");
+      systemState.state = ARMED;
       break;
     case ARMED:
-      //DebugPrintSimple("ARMED\n");
       if(isMotionDetected()) {
         recordTimeOfEvent();
         flashCarLightsAndHorn(400);
@@ -305,11 +291,18 @@ void loop() {
         // Read it again to clear any readings from the last second
         DebugPrintSimple("Throw away motion read after first trigger\n");
         isMotionDetected();
+      } else {
+        // No events, so keep recalibrating
+        if(systemState.learnCount == 0) {
+          normalizeValues();
+          resetSystemStateToCalibrate();
+        } else { 
+          learnNormalValues();
+        }
       }
       readRemoteControl();
       break;
     case NOT_ARMED:
-      //DebugPrintSimple("NOT_ARMED\n");
       readRemoteControl();
       break;
     case FIRST_TRIGGER:
@@ -440,14 +433,14 @@ void normalizeValues() {
   double avgZ = systemState.sumZ / (double)LEARN_COUNT;
   
   
-  systemState.maxX = ((systemState.maxX-avgX) * SAFETY_FACTOR) + avgX;
-  systemState.minX = ((systemState.minX-avgX) * SAFETY_FACTOR) + avgX;
+  systemState.maxX = ((systemState.runningMaxX-avgX) * SAFETY_FACTOR) + avgX;
+  systemState.minX = ((systemState.runningMinX-avgX) * SAFETY_FACTOR) + avgX;
   
-  systemState.maxY = ((systemState.maxY-avgY) * SAFETY_FACTOR) + avgY;
-  systemState.minY = ((systemState.minY-avgY) * SAFETY_FACTOR) + avgY;
+  systemState.maxY = ((systemState.runningMaxY-avgY) * SAFETY_FACTOR) + avgY;
+  systemState.minY = ((systemState.runningMinY-avgY) * SAFETY_FACTOR) + avgY;
   
-  systemState.maxZ = ((systemState.maxZ-avgZ) * SAFETY_FACTOR) + avgZ;
-  systemState.minZ = ((systemState.minZ-avgZ) * SAFETY_FACTOR) + avgZ;
+  systemState.maxZ = ((systemState.runningMaxZ-avgZ) * SAFETY_FACTOR) + avgZ;
+  systemState.minZ = ((systemState.runningMinZ-avgZ) * SAFETY_FACTOR) + avgZ;
   
   
   DebugPrintSimple("MinX: ");
@@ -473,9 +466,6 @@ void normalizeValues() {
   DebugPrintSimple("\tMaxZ: ");
   DebugPrintSimple(systemState.maxZ);
   DebugPrintSimple("\tm/s^2\n\n\n");
-
-  systemState.state = ARMED;
-
 }
 
 
@@ -493,29 +483,26 @@ void learnNormalValues() {
     systemState.sumY += a.acceleration.y;
     systemState.sumZ += a.acceleration.z;
 
-    if(a.acceleration.x > systemState.maxX) {
-      systemState.maxX = a.acceleration.x;
+    if(a.acceleration.x > systemState.runningMaxX) {
+      systemState.runningMaxX = a.acceleration.x;
     }
-    if(a.acceleration.x < systemState.minX) {
-      systemState.minX = a.acceleration.x;
-    }
-
-    if(a.acceleration.y > systemState.maxY) {
-      systemState.maxY = a.acceleration.y;
-    }
-    if(a.acceleration.y < systemState.minY) {
-      systemState.minY = a.acceleration.y;
+    if(a.acceleration.x < systemState.runningMinX) {
+      systemState.runningMinX = a.acceleration.x;
     }
 
-    if(a.acceleration.z > systemState.maxZ) {
-      systemState.maxZ = a.acceleration.z;
+    if(a.acceleration.y > systemState.runningMaxY) {
+      systemState.runningMaxY = a.acceleration.y;
     }
-    if(a.acceleration.z < systemState.minZ) {
-      systemState.minZ = a.acceleration.z;
+    if(a.acceleration.y < systemState.runningMinY) {
+      systemState.runningMinY = a.acceleration.y;
+    }
+
+    if(a.acceleration.z > systemState.runningMaxZ) {
+      systemState.runningMaxZ = a.acceleration.z;
+    }
+    if(a.acceleration.z < systemState.runningMinZ) {
+      systemState.runningMinZ = a.acceleration.z;
     }  
-  } else if (systemState.learnCount == 0) {
-    // All done learning
-    systemState.state = NORMALIZING;
   }
 }
 
@@ -532,6 +519,7 @@ void readRemoteControl() {
         systemState.remoteControlInput = sensorValue;
         DebugPrintln("Remote is now NOT_ARMED because we just started\n");
         systemState.state = NOT_ARMED;
+        DebugPrintln("NOT_ARMED\n");
         return;
   }
 
@@ -540,33 +528,21 @@ void readRemoteControl() {
     if (sensorValue == HIGH) {
       DebugPrintln("Remote is now HIGH");
       systemState.state = NOT_ARMED;
-      DebugPrintSimple("State is NOT_ARMED\n");
+      DebugPrintln("NOT_ARMED\n");
       digitalWrite(ONBOARD_LED_OUTPUT_PIN, LOW);
       flashCarLights(1000);
       delay(500);
       flashCarLights(1000);
     } else {
       DebugPrintln("Remote is now LOW\n");
-      resetSystemState();
-      // Do this to make sure the reset doesn't affect the armed state
-      systemState.remoteControlInput = sensorValue;
-      DebugPrintSimple("State is LEARNING\n");
+      resetSystemStateToCalibrate();
+      systemState.timeOfLastEvent = 0;
       systemState.state = LEARNING;
+      DebugPrintln("LEARNING\n");
       digitalWrite(ONBOARD_LED_OUTPUT_PIN, HIGH);
       flashCarLights(1000);
     }
   }
-}
-
-
-/**
- * Method that handles whenever motion is detected
- * Decides if we alarm or not, do we set in state
- * or not. Things like that.
- */
-void handleMotionDetected() {
-  printGyroAccelDebugInfo();
-  turnOnRemoteAlarm();
 }
 
 
@@ -580,36 +556,3 @@ void turnOnRemoteAlarm() {
   // The switch for the remote alarm is momentary, so turn it back off
   digitalWrite(RELAY_REMOTE_ALARM_PIN, LOW);
 }
-
-
-/*
- * Helper method that prints out the stats for the gyroscope
- */
-void printGyroAccelDebugInfo() {
-  /* Get new sensor events with the readings */
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-  
-  /* Print out the values */
-  DebugPrintSimple("AccelX:\t");
-  DebugPrintSimple(a.acceleration.x);
-  DebugPrintSimple("\t");
-  DebugPrintSimple("AccelY:\t");
-  DebugPrintSimple(a.acceleration.y);
-  DebugPrintSimple("\t");
-  DebugPrintSimple("AccelZ:\t");
-  DebugPrintSimple(a.acceleration.z);
-//  DebugPrintSimple("\t");
-//  DebugPrintSimple("GyroX:");
-//  DebugPrintSimple(g.gyro.x);
-//  DebugPrintSimple(",");
-//  DebugPrintSimple("GyroY:");
-//  DebugPrintSimple(g.gyro.y);
-//  DebugPrintSimple(",");
-//  DebugPrintSimple("GyroZ:");
-//  DebugPrintSimple(g.gyro.z);
-  DebugPrintSimple("\n");
-}
-
-
- 
