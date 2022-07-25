@@ -238,20 +238,17 @@ void resetSystemStateToCalibrate() {
  */
 void loop() {
 
+  sensors_event_t acceleration;
   switch(systemState.state) {
     case JUST_STARTED:
       DebugPrintSimple("JUST_STARTED\n");
       systemState.state = NOT_ARMED;
       DebugPrintSimple("NOT_ARMED\n");
-      flashCarLights(400);
-      delay(400);
-      flashCarLights(400);
-      delay(400);
-      flashCarLights(400);
-      delay(400);
-      flashCarLights(400);
-      delay(400);
-      flashCarLights(400);
+      flashCarLights(200);
+      delay(200);
+      flashCarLights(200);
+      delay(200);
+      flashCarLights(200);
       break;
     case LEARNING:
       if(systemState.learnCount % 100 == 0) {
@@ -259,7 +256,8 @@ void loop() {
         DebugPrintSimple(systemState.learnCount);
         DebugPrintSimple("\n");
       }
-      learnNormalValues();
+      acceleration = readAccelerometer();
+      learnNormalValues(acceleration);
       if(systemState.learnCount == 0) {
         systemState.state = NORMALIZING;
       }
@@ -282,7 +280,8 @@ void loop() {
       systemState.state = ARMED;
       break;
     case ARMED:
-      if(isMotionDetected()) {
+      acceleration = readAccelerometer();
+      if(isMotionDetected(acceleration)) {
         recordTimeOfEvent();
         flashCarLightsAndHorn(400);
         DebugPrintSimple("FIRST_TRIGGER\n");
@@ -290,14 +289,14 @@ void loop() {
         delay(1000);
         // Read it again to clear any readings from the last second
         DebugPrintSimple("Throw away motion read after first trigger\n");
-        isMotionDetected();
+        readAccelerometer();
       } else {
         // No events, so keep recalibrating
         if(systemState.learnCount == 0) {
           normalizeValues();
           resetSystemStateToCalibrate();
         } else { 
-          learnNormalValues();
+          learnNormalValues(acceleration);
         }
       }
       readRemoteControl();
@@ -306,7 +305,8 @@ void loop() {
       readRemoteControl();
       break;
     case FIRST_TRIGGER:
-      if(isMotionDetected()) {
+      acceleration = readAccelerometer();
+      if(isMotionDetected(acceleration)) {
         recordTimeOfEvent();
         DebugPrintSimple("ALARMING\n");
         systemState.state = ALARMING;
@@ -397,13 +397,21 @@ void recordTimeOfEvent() {
 }
 
 /**
- * Reads the values from the gyro/accelerometer to see if there is 
+ * Read the accelerometer
+ */
+sensors_event_t readAccelerometer() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+  return a; 
+}
+ 
+
+/**
+ * Check to see if there is 
  * any motion
  */
 
-bool isMotionDetected() {
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
+bool isMotionDetected(sensors_event_t a) {
 
   if(a.acceleration.x > systemState.maxX || a.acceleration.x < systemState.minX ||
      a.acceleration.y > systemState.maxY || a.acceleration.y < systemState.minY ||
@@ -473,9 +481,8 @@ void normalizeValues() {
  * This method reads the sensor and learns what the normal bounds are of the
  * accerlation values
  */
-void learnNormalValues() {
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
+void learnNormalValues(sensors_event_t a) {
+  
   if(systemState.learnCount > 0) {
     systemState.learnCount--;
 
