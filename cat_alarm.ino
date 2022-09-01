@@ -188,9 +188,30 @@ void setup(void) {
   DebugPrintln("MPU6050 Found!");
 
   //setupt motion detection
-  mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_44_HZ);
+  // Allowed values: https://adafruit.github.io/Adafruit_MPU6050/html/_adafruit___m_p_u6050_8h.html#a114993cadef707ad8c6ccc9c0fbf02ad
+  /*
+    MPU6050_RANGE_250_DEG --most sensative 	
+    MPU6050_RANGE_500_DEG 	
+    MPU6050_RANGE_1000_DEG 	
+    MPU6050_RANGE_2000_DE
+    
+    MPU6050_RANGE_2_G --most sensative
+    MPU6050_RANGE_4_G
+    MPU6050_RANGE_8_G
+    MPU6050_RANGE_16_G
+    
+    MPU6050_BAND_260_HZ 	
+    MPU6050_BAND_184_HZ 	
+    MPU6050_BAND_94_HZ 	
+    MPU6050_BAND_44_HZ 	
+    MPU6050_BAND_21_HZ 	
+    MPU6050_BAND_10_HZ 	
+    MPU6050_BAND_5_HZ 	-- lower frequency filters out more noise
+  */
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+  mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_5_HZ);
+  
   
 
 
