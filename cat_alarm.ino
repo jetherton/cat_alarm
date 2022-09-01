@@ -113,7 +113,7 @@
 #define ONBOARD_LED_OUTPUT_PIN 13 // The pin for the onboard led, pretty straight forward
 
 #define LEARN_COUNT 1000 // How many cycles we spend learning acceptable motion levels
-#define SAFETY_FACTOR 1.71 //How much buffer to give our motion thresholds
+#define SAFETY_FACTOR 1.90 //How much buffer to give our motion thresholds
 
 #define INITIAL_REMOTE_CONTROL_READ_STATE -255
 
@@ -286,6 +286,10 @@ void loop() {
         flashCarLightsAndHorn(400);
         DebugPrintSimple("FIRST_TRIGGER\n");
         systemState.state = FIRST_TRIGGER;
+        delay(1000);
+        // Read it again to clear any readings from the last second
+        DebugPrintSimple("Throw away motion read after first trigger\n");
+        readAccelerometer();
         delay(1000);
         // Read it again to clear any readings from the last second
         DebugPrintSimple("Throw away motion read after first trigger\n");
