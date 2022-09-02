@@ -112,8 +112,8 @@
 #define REMOTE_CONTROL_INPUT_PIN 9 // The pin where the 433mhz remote relay sends signals
 #define ONBOARD_LED_OUTPUT_PIN 13 // The pin for the onboard led, pretty straight forward
 
-#define LEARN_COUNT 1000 // How many cycles we spend learning acceptable motion levels
-#define SAFETY_FACTOR 1.90 //How much buffer to give our motion thresholds
+#define LEARN_COUNT 500 // How many cycles we spend learning acceptable motion levels
+#define SAFETY_FACTOR 3.0f //How much buffer to give our motion thresholds
 
 #define INITIAL_REMOTE_CONTROL_READ_STATE -255
 
@@ -190,9 +190,9 @@ void setup(void) {
   //setupt motion detection
   // Allowed values: https://adafruit.github.io/Adafruit_MPU6050/html/_adafruit___m_p_u6050_8h.html#a114993cadef707ad8c6ccc9c0fbf02ad
   /*
-    MPU6050_RANGE_250_DEG --most sensative 	
-    MPU6050_RANGE_500_DEG 	
-    MPU6050_RANGE_1000_DEG 	
+    MPU6050_RANGE_250_DEG --most sensative   
+    MPU6050_RANGE_500_DEG   
+    MPU6050_RANGE_1000_DEG  
     MPU6050_RANGE_2000_DE
     
     MPU6050_RANGE_2_G --most sensative
@@ -200,13 +200,13 @@ void setup(void) {
     MPU6050_RANGE_8_G
     MPU6050_RANGE_16_G
     
-    MPU6050_BAND_260_HZ 	
-    MPU6050_BAND_184_HZ 	
-    MPU6050_BAND_94_HZ 	
-    MPU6050_BAND_44_HZ 	
-    MPU6050_BAND_21_HZ 	
-    MPU6050_BAND_10_HZ 	
-    MPU6050_BAND_5_HZ 	-- lower frequency filters out more noise
+    MPU6050_BAND_260_HZ   
+    MPU6050_BAND_184_HZ   
+    MPU6050_BAND_94_HZ  
+    MPU6050_BAND_44_HZ  
+    MPU6050_BAND_21_HZ  
+    MPU6050_BAND_10_HZ  
+    MPU6050_BAND_5_HZ   -- lower frequency filters out more noise
   */
   mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
   mpu.setGyroRange(MPU6050_RANGE_250_DEG);
@@ -464,7 +464,22 @@ void normalizeValues() {
   double avgX = systemState.sumX / (double)LEARN_COUNT;
   double avgY = systemState.sumY / (double)LEARN_COUNT;
   double avgZ = systemState.sumZ / (double)LEARN_COUNT;
-  
+
+    DebugPrintSimple("\n running max x ");
+    DebugPrintSimple(systemState.runningMaxX);
+
+    DebugPrintSimple("\n avgX ");
+    DebugPrintSimple(avgX);
+
+    DebugPrintSimple("\n (systemState.runningMaxX-avgX) ");
+    DebugPrintSimple((systemState.runningMaxX-avgX));
+
+    DebugPrintSimple("\n ((systemState.runningMaxX-avgX) * SAFETY_FACTOR) ");
+    DebugPrintSimple(((systemState.runningMaxX-avgX) * SAFETY_FACTOR));
+    
+    DebugPrintSimple("\n ((systemState.runningMaxX-avgX) * SAFETY_FACTOR) + avgX ");
+    DebugPrintSimple(((systemState.runningMaxX-avgX) * SAFETY_FACTOR) + avgX);
+    DebugPrintSimple("\n\n");
   
   systemState.maxX = ((systemState.runningMaxX-avgX) * SAFETY_FACTOR) + avgX;
   systemState.minX = ((systemState.runningMinX-avgX) * SAFETY_FACTOR) + avgX;
