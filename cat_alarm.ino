@@ -113,7 +113,7 @@
 #define ONBOARD_LED_OUTPUT_PIN 13 // The pin for the onboard led, pretty straight forward
 
 #define LEARN_COUNT 500 // How many cycles we spend learning acceptable motion levels
-#define SAFETY_FACTOR 3.0f //How much buffer to give our motion thresholds
+#define SAFETY_FACTOR 3.50 //How much buffer to give our motion thresholds
 
 #define INITIAL_REMOTE_CONTROL_READ_STATE -255
 
@@ -133,22 +133,22 @@ struct SystemState {
   int remoteControlInput = INITIAL_REMOTE_CONTROL_READ_STATE;
   int learnCount = LEARN_COUNT;
 
-  float maxX = -10000000.0;
-  float runningMaxX = -10000000.0;
-  float minX = 10000000.0;
-  float runningMinX = 10000000.0;
+  double maxX = -10000000.0;
+  double runningMaxX = -10000000.0;
+  double minX = 10000000.0;
+  double runningMinX = 10000000.0;
   double sumX = 0;
   
-  float maxY = -10000000.0;
-  float runningMaxY = -10000000.0;
-  float minY = 10000000.0;
-  float runningMinY = 10000000.0;
+  double maxY = -10000000.0;
+  double runningMaxY = -10000000.0;
+  double minY = 10000000.0;
+  double runningMinY = 10000000.0;
   double sumY = 0;
   
-  float maxZ = -10000000.0;
-  float runningMaxZ = -10000000.0;
-  float minZ = 10000000.0;
-  float runningMinZ = 10000000.0;
+  double maxZ = -10000000.0;
+  double runningMaxZ = -10000000.0;
+  double minZ = 10000000.0;
+  double runningMinZ = 10000000.0;
   double sumZ = 0;
   
   double avgX = 0;
@@ -438,16 +438,22 @@ sensors_event_t readAccelerometer() {
 
 bool isMotionDetected(sensors_event_t a) {
 
+  char floatBuffer[40];
+  byte precision = 8;
+
   if(a.acceleration.x > systemState.maxX || a.acceleration.x < systemState.minX ||
      a.acceleration.y > systemState.maxY || a.acceleration.y < systemState.minY ||
      a.acceleration.z > systemState.maxZ || a.acceleration.z < systemState.minZ ) {
       
     DebugPrintSimple("Motion Detected \ta.x: ");
-    DebugPrintSimple(a.acceleration.x);
+    dtostrf(a.acceleration.x, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
     DebugPrintSimple("\ta.y: ");
-    DebugPrintSimple(a.acceleration.y);
+    dtostrf(a.acceleration.y, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
     DebugPrintSimple("\ta.z: ");
-    DebugPrintSimple(a.acceleration.z);
+    dtostrf(a.acceleration.z, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
     DebugPrintSimple("\tm/s^2\n");
     return true;
   } else {
@@ -459,6 +465,10 @@ bool isMotionDetected(sensors_event_t a) {
  * This method takes the learned values and normalizes them.
  */
 void normalizeValues() {
+      
+  char floatBuffer[40];
+  byte precision = 8;
+
   
   DebugPrintSimple("\nComputing average and safety\n");
   double avgX = systemState.sumX / (double)LEARN_COUNT;
@@ -466,53 +476,92 @@ void normalizeValues() {
   double avgZ = systemState.sumZ / (double)LEARN_COUNT;
 
     DebugPrintSimple("\n running max x ");
-    DebugPrintSimple(systemState.runningMaxX);
+    dtostrf(systemState.runningMaxX, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
 
     DebugPrintSimple("\n avgX ");
-    DebugPrintSimple(avgX);
+    dtostrf(avgX, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
 
     DebugPrintSimple("\n (systemState.runningMaxX-avgX) ");
-    DebugPrintSimple((systemState.runningMaxX-avgX));
+    dtostrf((systemState.runningMaxX-avgX), precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
 
     DebugPrintSimple("\n ((systemState.runningMaxX-avgX) * SAFETY_FACTOR) ");
-    DebugPrintSimple(((systemState.runningMaxX-avgX) * SAFETY_FACTOR));
+    dtostrf(((systemState.runningMaxX-avgX) * (double)SAFETY_FACTOR), precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
     
     DebugPrintSimple("\n ((systemState.runningMaxX-avgX) * SAFETY_FACTOR) + avgX ");
-    DebugPrintSimple(((systemState.runningMaxX-avgX) * SAFETY_FACTOR) + avgX);
+    dtostrf(((systemState.runningMaxX-avgX) * (double)SAFETY_FACTOR) + avgX, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
+    DebugPrintSimple("\n\n");
+
+    DebugPrintSimple("\n (double)SAFETY_FACTOR ");
+    dtostrf((double)SAFETY_FACTOR, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
+    
+    DebugPrintSimple("\n running min x ");
+    dtostrf(systemState.runningMinX, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
+
+    DebugPrintSimple("\n avgX ");
+    dtostrf(avgX, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
+
+    DebugPrintSimple("\n (systemState.runningMinX-avgX) ");
+    dtostrf((systemState.runningMinX-avgX), precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
+
+    DebugPrintSimple("\n ((systemState.runningMinX-avgX) * SAFETY_FACTOR) ");
+    dtostrf(((systemState.runningMinX-avgX) * (double)SAFETY_FACTOR), precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
+    
+    DebugPrintSimple("\n ((systemState.runningMinX-avgX) * SAFETY_FACTOR) + avgX ");
+    dtostrf(((systemState.runningMinX-avgX) * (double)SAFETY_FACTOR) + avgX, precision+3, precision, floatBuffer);
+    DebugPrintSimple(floatBuffer);
     DebugPrintSimple("\n\n");
   
-  systemState.maxX = ((systemState.runningMaxX-avgX) * SAFETY_FACTOR) + avgX;
-  systemState.minX = ((systemState.runningMinX-avgX) * SAFETY_FACTOR) + avgX;
+  systemState.maxX = ((systemState.runningMaxX-avgX) * (double)SAFETY_FACTOR) + avgX;
+  systemState.minX = ((systemState.runningMinX-avgX) * (double)SAFETY_FACTOR) + avgX;
   
-  systemState.maxY = ((systemState.runningMaxY-avgY) * SAFETY_FACTOR) + avgY;
-  systemState.minY = ((systemState.runningMinY-avgY) * SAFETY_FACTOR) + avgY;
+  systemState.maxY = ((systemState.runningMaxY-avgY) * (double)SAFETY_FACTOR) + avgY;
+  systemState.minY = ((systemState.runningMinY-avgY) * (double)SAFETY_FACTOR) + avgY;
   
-  systemState.maxZ = ((systemState.runningMaxZ-avgZ) * SAFETY_FACTOR) + avgZ;
-  systemState.minZ = ((systemState.runningMinZ-avgZ) * SAFETY_FACTOR) + avgZ;
+  systemState.maxZ = ((systemState.runningMaxZ-avgZ) * (double)SAFETY_FACTOR) + avgZ;
+  systemState.minZ = ((systemState.runningMinZ-avgZ) * (double)SAFETY_FACTOR) + avgZ;
   
   
   DebugPrintSimple("MinX: ");
-  DebugPrintSimple(systemState.minX);
+  dtostrf(systemState.minX, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tavgX: ");
-  DebugPrintSimple(avgX);
+  dtostrf(avgX, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tMaxX: ");
-  DebugPrintSimple(systemState.maxX);
+  dtostrf(systemState.maxX, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tm/s^2\n");
   
   DebugPrintSimple("MinY: ");
-  DebugPrintSimple(systemState.minY);
+  dtostrf(systemState.minY, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tavgY: ");
-  DebugPrintSimple(avgY);
+  dtostrf(avgY, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tMaxY: ");
-  DebugPrintSimple(systemState.maxY);
+  dtostrf(systemState.maxY, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tm/s^2\n");
   
   DebugPrintSimple("MinZ: ");
-  DebugPrintSimple(systemState.minZ);
+  dtostrf(systemState.minZ, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tavgZ: ");
-  DebugPrintSimple(avgZ);
+  dtostrf(avgZ, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tMaxZ: ");
-  DebugPrintSimple(systemState.maxZ);
+  dtostrf(systemState.maxZ, precision+3, precision, floatBuffer);
+  DebugPrintSimple(floatBuffer);
   DebugPrintSimple("\tm/s^2\n\n\n");
 }
 
